@@ -18,21 +18,27 @@ pipeline {
         sh 'bash -n app/main.sh'
       }
     }
-    stage('Docker Build & Push') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                                          usernameVariable: 'DOCKER_USER',
-                                          passwordVariable: 'DOCKER_PASS')]) {
-          sh '''
-            echo "" | docker login -u "" --password-stdin
-            docker build -t : .
-            docker tag : :latest
-            docker push :
-            docker push :latest
-          '''
-        }
-      }
+   stage('Docker Build & Push') {
+  steps {
+    withCredentials([usernamePassword(
+      credentialsId: 'dockerhub-creds',    // <-- upar wala ID
+      usernameVariable: 'DOCKER_USER',
+      passwordVariable: 'DOCKER_PASS'
+    )]) {
+      sh '''
+        set -e
+        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+        IMAGE="docker.io/ubedk1909/demo-app:${BUILD_NUMBER}"
+        docker build -t "$IMAGE" .
+        docker push "$IMAGE"
+
+        docker logout || true
+      '''
     }
+  }
+}
+
     stage('Deploy to Kubernetes') {
       when { expression { return false } } // true karo jab kubeconfig ready ho
       steps {
